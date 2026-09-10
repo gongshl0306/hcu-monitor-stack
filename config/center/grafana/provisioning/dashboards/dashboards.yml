@@ -1,0 +1,15 @@
+# Grafana dashboard 自动发现
+# 扫描 /var/lib/grafana/dashboards 下所有 .json（已挂载自 ./grafana/dashboards）
+apiVersion: 1
+
+providers:
+  - name: hcu
+    orgId: 1
+    folder: HCU
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

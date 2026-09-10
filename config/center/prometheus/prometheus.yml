@@ -1,0 +1,45 @@
+# Prometheus 配置 —— HCU 可观测体系（中心节点）
+#
+# 采集目标由 targets/hcu-nodes.json 驱动（file_sd），该文件由 deploy.sh 从
+# nodes.txt 自动生成。加/减 GPU 节点只需改 nodes.txt 再 reload，无需改本文件。
+#
+# 热加载：curl -X POST http://<本机IP>:9090/-/reload
+
+global:
+  scrape_interval: 15s        # 与 exporter --pulse 匹配
+  evaluation_interval: 15s
+  external_labels:
+    monitor: hcu-cluster
+
+# 告警规则
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+# 告警路由到 Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # ===== HCU 采集端（核心）=====
+  # 每台 GPU 节点跑一个 hcu-exporter 容器，监听 16080。
+  # 目标 IP 来自 targets/hcu-nodes.json（file_sd 自动发现）。
+  # 中心节点与 GPU 节点同机时，nodes.txt 里写 host.docker.internal 即可
+  # （compose 已把 host.docker.internal 映射到宿主机网关）。
+  - job_name: hcu-exporter
+    metrics_path: /metrics
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/hcu-nodes.json
+        refresh_interval: 30s
+    # 每个 target 的 labels（含 node）由 file_sd 直接应用到指标上，便于按节点过滤
+
+  # ===== 监控栈自监控 =====
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]

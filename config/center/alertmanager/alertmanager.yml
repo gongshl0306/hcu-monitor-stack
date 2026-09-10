@@ -1,0 +1,57 @@
+# Alertmanager 配置 —— HCU 告警路由
+#
+# 默认走 webhook（示例为钉钉机器人）。按你的告警通道二选一：
+#   - 钉钉/企微：用 webhook + 一个转发服务（如 prometheus-webhook-dingtalk），
+#     或把 webhook.url 换成你们内部告警网关
+#   - 邮件：取消下方 email 注释并配置 smtp
+#
+# 修改后热加载：curl -X POST http://<本机IP>:9093/-/reload
+
+global:
+  resolve_timeout: 5m
+  # ---- 邮件（可选）----
+  # smtp_smarthost: 'smtp.example.com:465'
+  # smtp_from: 'hcu-alert@example.com'
+  # smtp_auth_username: 'hcu-alert@example.com'
+  # smtp_auth_password: 'xxxx'
+  # smtp_require_tls: false
+
+route:
+  receiver: hcu-default
+  group_by: ['alertname', 'node', 'severity']
+  group_wait: 30s          # 同组告警等待 30s 合并
+  group_interval: 5m       # 同组新增告警 5m 内合并
+  repeat_interval: 4h      # 未恢复告警每 4h 重发
+  routes:
+    # critical 单独路由，可接更紧急的通道
+    - matchers:
+        - severity = critical
+      receiver: hcu-critical
+      repeat_interval: 1h
+
+receivers:
+  - name: hcu-default
+    # 钉钉机器人（需配合 webhook 转发，或换成内部告警网关地址）
+    webhook_configs:
+      - url: http://127.0.0.1:8060/dingtalk/webhook/send
+        send_resolved: true
+    # 邮件（可选，配合 global.smtp_*）
+    # email_configs:
+    #   - to: hcu-ops@example.com
+    #     send_resolved: true
+
+  - name: hcu-critical
+    webhook_configs:
+      - url: http://127.0.0.1:8060/dingtalk/webhook/send
+        send_resolved: true
+    # email_configs:
+    #   - to: hcu-oncall@example.com
+    #     send_resolved: true
+
+# 抑制：exporter 离线时，该节点其它硬件告警无意义，抑制掉
+inhibit_rules:
+  - source_matchers:
+      - alertname = "HCUExporterDown"
+    target_matchers:
+      - severity = "warning"
+    equal: ['node']

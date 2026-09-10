@@ -1,0 +1,69 @@
+# HCU 可观测体系 —— 中心监控栈（Prometheus + Alertmanager + Grafana）
+#
+# 部署位置：一台中心节点（无 DCU 的虚拟机即可，不要求本机有 HCU）。
+# 采集端 hcu-exporter 在每台 GPU 计算节点上单独用 docker 跑（见 config/gpu-node/）。
+#
+# 本文件由 deploy.sh 在中心节点上调用：
+#   docker compose -f config/center/docker-compose.yml up -d
+#
+# 访问：
+#   Grafana        http://<本机IP>:3000   (admin / admin，生产请改密码)
+#   Prometheus     http://<本机IP>:9090
+#   Alertmanager   http://<本机IP>:9093
+#
+# 说明：
+#   - 数据持久化在 ./data 下（prometheus / alertmanager / grafana 三个子目录）
+#   - 采集目标来自 prometheus/targets/hcu-nodes.json（由 deploy.sh 从 nodes.txt 生成）
+#   - 中心节点与 GPU 节点同机时，nodes.txt 写 host.docker.internal；
+#     跨机时写各 GPU 节点的内网 IP（需从中心节点可达）
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: hcu-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - ./prometheus/targets:/etc/prometheus/targets:ro
+      - ./data/prometheus:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"   # 支持 POST /-/reload 热加载配置
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: hcu-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./data/alertmanager:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: hcu-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      # 数据源 + dashboard 自动发现
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus

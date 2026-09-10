@@ -1,0 +1,133 @@
+# HCU 告警规则
+#
+# 指标语义（来自 hcu-exporter 源码）：
+#   hcu_temp                 gauge, 摄氏度
+#   hcu_health_status{health} gauge, health="Healthy" 时为 1，其余状态为 0
+#   hcu_ce_count_total       counter, 可纠正 ECC 错误累计
+#   hcu_ue_count_total       counter, 不可纠正 ECC 错误累计
+#   hcu_throttle{throttle_type} gauge, thermal/power/slowdown/board_limit，1=正在降频
+#   hcu_utilizationrate      gauge, 瞬时利用率(%)
+#   hcu_power_usage          gauge, 功耗(W)
+#   hcu_bad_pages{page_status} gauge, 坏页计数
+#
+# 注意：hcu_health_status / hcu_throttle / hcu_ce_count_total 等属于 medium 档，
+#       请确保 exporter 以 --metrics-level=medium（或 high）运行，否则这些指标不存在。
+
+groups:
+  - name: hcu-hardware
+    rules:
+      # 健康检查失败（medium 档）
+      - alert: HCUHealthCheckFailed
+        expr: hcu_health_status{health!="Healthy"} == 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HCU 健康检查失败 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} ({{ $labels.pcieBus_number }}) 健康状态为 {{ $labels.health }}，请检查硬件。"
+
+      # 温度过高
+      - alert: HCUHighTemp
+        expr: hcu_temp > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HCU 温度过高 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 温度 {{ $value | printf \"%.0f\" }}°C 超过 85°C，持续 5 分钟。"
+
+      # 温度逼近临界
+      - alert: HCUCriticalTemp
+        expr: hcu_temp > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HCU 温度临界 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 温度 {{ $value | printf \"%.0f\" }}°C 超过 95°C，存在硬件风险。"
+
+      # 降频（热/功耗/板卡限制）
+      - alert: HCUThrottling
+        expr: hcu_throttle == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HCU 正在降频 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 触发 {{ $labels.throttle_type }} 降频，持续 5 分钟，性能可能受损。"
+
+      # 不可纠正 ECC 错误（出现即严重）
+      - alert: HCUUncorrectableECC
+        expr: increase(hcu_ue_count_total[10m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "HCU 出现不可纠正 ECC 错误 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 10 分钟内新增不可纠正 ECC 错误，显存可能损坏，建议尽快下线检修。"
+
+      # 可纠正 ECC 错误增长过快
+      - alert: HCUCorrectableECC
+        expr: increase(hcu_ce_count_total[1h]) > 100
+        labels:
+          severity: warning
+        annotations:
+          summary: "HCU 可纠正 ECC 错误增长 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 1 小时内新增 {{ $value | printf \"%.0f\" }} 个可纠正 ECC 错误，显存可能劣化。"
+
+      # 坏页
+      - alert: HCUBadPages
+        expr: hcu_bad_pages > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HCU 存在坏页 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 检测到 {{ $value | printf \"%.0f\" }} 个坏页 ({{ $labels.page_status }})。"
+
+  - name: hcu-workload
+    rules:
+      # 有进程占用但利用率为 0 —— 任务可能卡死/掉卡
+      - alert: HCUProcessIdle
+        expr: |
+          (hcu_process_vram_used_bytes > 0)
+          and on(node, device_id) (hcu_utilizationrate == 0)
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HCU 有进程占用但零利用率 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 有显存占用但利用率持续 15 分钟为 0，训练任务可能卡死或掉卡。"
+
+      # 功耗异常偏低（有进程但几乎不耗电，疑似 hang）
+      - alert: HCULowPowerWithProcess
+        expr: |
+          (hcu_process_vram_used_bytes > 0)
+          and on(node, device_id) (hcu_power_usage < 50)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HCU 有进程但功耗异常低 ({{ $labels.node }} / {{ $labels.name }})"
+          description: "设备 {{ $labels.name }} 有显存占用但功耗仅 {{ $value | printf \"%.0f\" }}W，疑似任务 hang。"
+
+  - name: hcu-self-monitor
+    rules:
+      # 采集端不可用
+      - alert: HCUExporterDown
+        expr: up{job="hcu-exporter"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "hcu-exporter 采集端离线 ({{ $labels.instance }})"
+          description: "节点 {{ $labels.instance }} 的 hcu-exporter 已 3 分钟无法抓取，请检查容器是否存活。"
+
+      # 抓取延迟过高
+      - alert: HCUExporterSlowScrape
+        expr: scrape_duration_seconds{job="hcu-exporter"} > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "hcu-exporter 抓取缓慢 ({{ $labels.instance }})"
+          description: "节点 {{ $labels.instance }} 单次抓取耗时 {{ $value | printf \"%.1f\" }}s，超过 10s，可能影响采集完整性。"

@@ -1,0 +1,15 @@
+# Grafana 数据源自动发现
+# uid 固定为 hcu-prometheus，dashboard JSON 中的 ${DS_PROMETHEUS*} 占位符
+# 已在构建时替换为该 uid（见 README 说明）。
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: hcu-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
