@@ -113,10 +113,16 @@ deploy_center() {
   ensure_image "${IMG_AM}"
   ensure_image "${IMG_GRAFANA}"
 
-  # 2) 数据目录 + 属主（容器以 nobody/472 运行，目录须可写）
+  # 2) 数据目录 + 属主（容器以 nobody(65534)/grafana(472) 运行，目录须可写）
+  #    root：chown 到容器 uid（干净）；非 root（docker 组用户）：chmod 777 兜底
   mkdir -p "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager" "${DATA_DIR}/grafana"
-  chown -R 65534:65534 "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager"
-  chown -R 472:472     "${DATA_DIR}/grafana"
+  if [ "$(id -u)" = "0" ]; then
+    chown -R 65534:65534 "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager"
+    chown -R 472:472     "${DATA_DIR}/grafana"
+  else
+    chmod -R 777 "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager" "${DATA_DIR}/grafana"
+    warn "非 root 用户：数据目录用 chmod 777 授权（容器 uid 65534/472 需可写）"
+  fi
   log "数据目录就绪：${DATA_DIR}"
 
   # 3) 生成采集目标（file_sd）
