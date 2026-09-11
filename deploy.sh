@@ -201,16 +201,17 @@ deploy_gpu_node() {
     "${IMG_EXPORTER}"
   log "hcu-exporter 已启动（端口 ${PORT}）"
 
-  # 6) 验证（精选指标 ~5s/轮，留 30s 余量）
+  # 6) 验证（稳态 ~5s/轮；但第一轮含 DCGM 初始化 + 首次采集，实测可达 30~60s，
+  #    故留 90s 窗口，避免首轮慢被误判为失败）
   local ok=0
-  for i in $(seq 1 30); do
+  for i in $(seq 1 90); do
     sleep 1
     if curl -sf "http://127.0.0.1:${PORT}/metrics" 2>/dev/null | grep -q '^hcu_'; then ok=1; break; fi
   done
   if [ "${ok}" = "1" ]; then
-    log "exporter 正常，指标已暴露"
+    log "exporter 正常，指标已暴露（第 ${i}s 就绪）"
   else
-    die "exporter 30s 内未返回 hcu_ 指标，请检查 docker logs ${C_EXPORTER}"
+    die "exporter 90s 内未返回 hcu_ 指标，请检查 docker logs ${C_EXPORTER}"
   fi
 
   local ip; ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
