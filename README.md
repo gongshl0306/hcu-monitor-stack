@@ -8,7 +8,7 @@
 GPU 计算节点(有 HCU)                中心节点(无 DCU 的虚拟机即可)
 ┌─────────────────────┐            ┌──────────────────────────────────┐
 │  hcu-exporter :16080 │  scrape   │  Prometheus :9090                 │
-│  (docker, 19 精选指标)│ ────────► │  Alertmanager :9093               │
+│  (docker, 24 精选指标)│ ────────► │  Alertmanager :9093               │
 └─────────────────────┘  (内网直连) │  Grafana      :3000               │
                                     └──────────────────────────────────┘
 ```
@@ -34,7 +34,7 @@ hcu-observability/
     │   ├── alertmanager/alertmanager.yml
     │   └── grafana/              #   数据源 + 3 个 dashboard 自动发现
     └── gpu-node/
-        └── gpu-node.env          # exporter 运行参数（含 19 精选指标）
+        └── gpu-node.env          # exporter 运行参数（含 24 精选指标）
 ```
 
 ## 快速开始
@@ -69,7 +69,7 @@ bash deploy.sh center
 bash deploy.sh gpu-node
 ```
 
-自动完成：加载镜像 → 检查驱动/设备 → 起 exporter（19 精选指标）→ 验证 `/metrics`。
+自动完成：加载镜像 → 检查驱动/设备 → 起 exporter（24 精选指标）→ 验证 `/metrics`。
 
 ### 3. 把 GPU 节点接入中心
 
@@ -98,12 +98,17 @@ bash deploy.sh add-node
 
 ## 关键设计点
 
-### 为什么 GPU 节点必须用「19 精选指标」
+### 为什么 GPU 节点必须用「24 精选指标」
 
 `hcu-exporter` 内置看门狗：**单轮采集超 60s 未更新即 `os.Exit(1)`**。
 默认 `medium`（81 指标）/`high` 在 **8 卡节点**下单轮约 60s，会被反复杀掉。
-`config/gpu-node/gpu-node.env` 里的 `ENABLE_METRICS` 精选 19 个指标（覆盖全部告警规则 + 面板核心），单轮约 5s，稳定运行。
+`config/gpu-node/gpu-node.env` 里的 `ENABLE_METRICS` 精选 24 个指标（覆盖全部告警规则 + 面板核心），8 卡实测单轮约 5s，稳定运行。
 **不要**改回 `METRICS_LEVEL=medium/high`。
+
+### 面板里 `vhcu_*`（虚拟卡）为什么是 No data
+
+`HCU Cluster Monitor` 里的虚拟卡面板（`vhcu_utilizationrate` / `vhcu_usedmemory_bytes` / `vhcu_temp` / `vhcu_count`）
+只在 **MIG/虚拟化** 场景下有数据。裸机（未开 MIG）没有虚拟卡，这些面板 No data 属**正常现象**，不是故障。
 
 ### 中心节点与 GPU 节点「不通」怎么办
 
