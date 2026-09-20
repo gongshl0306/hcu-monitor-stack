@@ -1,0 +1,721 @@
+{
+  "uid": "sglang-inference",
+  "title": "SGLang Inference Monitor",
+  "tags": [
+    "sglang",
+    "llm"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "schemaVersion": 38,
+  "version": 1,
+  "weekStart": "",
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "style": "dark",
+  "id": null,
+  "gnetId": null,
+  "links": [],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "instance:",
+        "query": {
+          "query": "label_values(up{job=\"sglang\"}, instance)",
+          "refId": "PrometheusVariableQueryEditor-instance"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "hcu-prometheus"
+        },
+        "type": "query",
+        "refresh": 1,
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {},
+        "options": [],
+        "skipUrlSync": false,
+        "sort": 1,
+        "hide": 0
+      },
+      {
+        "name": "model",
+        "label": "model:",
+        "query": {
+          "query": "label_values(sglang:num_running_reqs, model_name)",
+          "refId": "PrometheusVariableQueryEditor-model"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "hcu-prometheus"
+        },
+        "type": "query",
+        "refresh": 1,
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {},
+        "options": [],
+        "skipUrlSync": false,
+        "sort": 1,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "服务状态 (up)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"sglang\",instance=~\"$instance\"}",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 2,
+      "title": "运行中请求",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(sglang:num_running_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 3,
+      "title": "排队请求",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(sglang:num_queue_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 4,
+      "title": "KV cache 使用率",
+      "type": "gauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "avg(sglang:token_usage{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 5,
+      "title": "吞吐 (tokens/s)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sglang:generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 6,
+      "title": "缓存命中率",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "avg(sglang:cache_hit_rate{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "{{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 7,
+      "title": "TTFT 首token延迟 (P50/P90/P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5,  sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P50 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.9,  sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P90 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P99 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 8,
+      "title": "端到端延迟 (P50/P90/P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5,  sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P50 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.9,  sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P90 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P99 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 9,
+      "title": "排队等待时间 (P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sglang:queue_time_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P99 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 10,
+      "title": "运行/排队请求数",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "sum(sglang:num_running_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "running ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "sum(sglang:num_queue_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "queue ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 11,
+      "title": "KV cache tokens (used/available)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "sum(sglang:kv_used_tokens{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "used ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "sum(sglang:kv_available_tokens{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "available ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 12,
+      "title": "token 速率 (prompt/generation)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(sglang:prompt_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "legendFormat": "prompt ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "sum(rate(sglang:generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "legendFormat": "generation ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 13,
+      "title": "每token间隔 ITL (P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sglang:inter_token_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "legendFormat": "P99 ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 14,
+      "title": "投机解码接受率 (EAGLE)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "avg(sglang:spec_accept_rate{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "accept_rate ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "avg(sglang:spec_accept_length{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "accept_length ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    },
+    {
+      "id": 15,
+      "title": "中止/重退请求 (5m增量)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "hcu-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(sglang:num_aborted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "legendFormat": "aborted ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        },
+        {
+          "expr": "sum(increase(sglang:num_retracted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "legendFormat": "retracted ${{{{instance}}}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "hcu-prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "pluginVersion": "11.1.0"
+    }
+  ]
+}

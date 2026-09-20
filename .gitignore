@@ -4,5 +4,6 @@ images/*.tar
 # 运行时数据（TSDB / 告警状态 / Grafana 库）
 config/center/data/
 
-# 由 deploy.sh 生成的采集目标（从 nodes.txt 派生）
+# 由 deploy.sh 生成的采集目标（从 nodes.txt / sglang.txt 派生）
 config/center/prometheus/targets/hcu-nodes.json
+config/center/prometheus/targets/sglang-servers.json

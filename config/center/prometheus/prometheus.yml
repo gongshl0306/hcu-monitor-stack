@@ -35,6 +35,17 @@ scrape_configs:
         refresh_interval: 30s
     # 每个 target 的 labels（含 node）由 file_sd 直接应用到指标上，便于按节点过滤
 
+  # ===== SGLang 推理服务 =====
+  # 服务启动参数须带 --enable-metrics，/metrics 就在服务端口上。
+  # 接口列表来自 targets/sglang-servers.json（由 deploy.sh 从 sglang.txt 生成）。
+  - job_name: sglang
+    metrics_path: /metrics
+    scrape_interval: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/sglang-servers.json
+        refresh_interval: 30s
+
   # ===== 监控栈自监控 =====
   - job_name: prometheus
     static_configs:

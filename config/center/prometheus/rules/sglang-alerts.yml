@@ -1,0 +1,93 @@
+# SGLang 推理服务告警规则
+#
+# 指标前提：服务启动带 --enable-metrics（sglang: 前缀指标）。
+# 标签：instance（IP:端口）、model_name（--served-model-name）。
+
+groups:
+  - name: sglang-availability
+    rules:
+      # 服务离线（scrape 失败）
+      - alert: SGLangDown
+        expr: up{job="sglang"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SGLang 服务离线: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} ({{ $labels.model_name }}) 1 分钟无法采集 /metrics，服务可能宕机或端口不通。"
+
+  - name: sglang-load
+    rules:
+      # 请求排队积压
+      - alert: SGLangQueueBacklog
+        expr: sglang:num_queue_reqs > 32
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang 排队积压: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 排队请求 {{ $value | printf \"%.0f\" }} 个持续 5 分钟，吞吐可能跟不上请求速率。"
+
+      # 运行中请求过多（接近/超过并发能力）
+      - alert: SGLangRunningReqsHigh
+        expr: sglang:num_running_reqs > 128
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang 并发过高: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 运行中请求 {{ $value | printf \"%.0f\" }} 个持续 5 分钟，延迟可能上升。"
+
+      # KV cache 使用率过高（>90% 会触发 retract/抢占）
+      - alert: SGLangKVCacheHigh
+        expr: sglang:token_usage > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang KV cache 使用率过高: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} token_usage={{ $value | printf \"%.2f\" }}，接近上限会触发请求 retract，建议扩容或限流。"
+
+  - name: sglang-latency
+    rules:
+      # TTFT（首 token 延迟）P99 过高
+      - alert: SGLangTTFTHigh
+        expr: histogram_quantile(0.99, sum(rate(sglang:time_to_first_token_seconds_bucket[5m])) by (le, instance)) > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang TTFT P99 过高: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 首 token 延迟 P99 = {{ $value | printf \"%.2f\" }}s 持续 10 分钟（阈值 3s）。"
+
+      # 端到端延迟 P99 过高
+      - alert: SGLangE2ELatencyHigh
+        expr: histogram_quantile(0.99, sum(rate(sglang:e2e_request_latency_seconds_bucket[5m])) by (le, instance)) > 60
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang 端到端延迟 P99 过高: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 请求端到端延迟 P99 = {{ $value | printf \"%.0f\" }}s 持续 10 分钟（阈值 60s）。"
+
+  - name: sglang-errors
+    rules:
+      # 有请求被中止
+      - alert: SGLangAbortedRequests
+        expr: increase(sglang:num_aborted_requests_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang 有请求被中止: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 5 分钟内中止 {{ $value | printf \"%.0f\" }} 个请求（客户端断开或服务端中止）。"
+
+      # 投机解码接受率过低（EAGLE 配置异常时会出现）
+      - alert: SGLangSpecAcceptRateLow
+        expr: sglang:spec_accept_rate < 0.3 and sglang:spec_accept_rate > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SGLang 投机解码接受率过低: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} spec_accept_rate={{ $value | printf \"%.2f\" }} 持续 30 分钟，投机解码收益低，可考虑关闭或调参。"

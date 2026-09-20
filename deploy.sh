@@ -10,7 +10,8 @@
 # 用法：
 #   bash deploy.sh center      # 在本机部署中心监控栈
 #   bash deploy.sh gpu-node    # 在本机部署 hcu-exporter（GPU 节点）
-#   bash deploy.sh add-node    # 中心节点：从 nodes.txt 重新生成采集目标并热加载
+#   bash deploy.sh add-node    # 中心节点：从 nodes.txt 重新生成 HCU 采集目标并热加载
+#   bash deploy.sh sglang      # 中心节点：从 sglang.txt 生成 SGLang 服务采集目标并热加载
 #   bash deploy.sh status      # 查看本机部署状态
 #   bash deploy.sh stop        # 停止本机相关容器
 #
@@ -32,6 +33,7 @@ CENTER_DIR="${SCRIPT_DIR}/config/center"
 GPU_DIR="${SCRIPT_DIR}/config/gpu-node"
 IMAGES_DIR="${SCRIPT_DIR}/images"
 NODES_FILE="${SCRIPT_DIR}/nodes.txt"
+SGLANG_FILE="${SCRIPT_DIR}/sglang.txt"
 DATA_DIR="${CENTER_DIR}/data"
 
 # 镜像名（与 images/ 里 tar 的 tag 对应）
@@ -72,10 +74,11 @@ ensure_image() {
     || die "镜像 ${img} 不可用：images/ 下没有对应 tar，且本地未构建。请先在构建机上执行 bash deploy.sh pack-images"
 }
 
-# 从 nodes.txt 生成 Prometheus file_sd 目标文件
+# 从接口列表文件生成 Prometheus file_sd 目标文件
+#   gen_targets <列表文件> <输出json> <默认端口>
 gen_targets() {
-  local out="$1"
-  [ -f "${NODES_FILE}" ] || die "找不到 ${NODES_FILE}"
+  local list_file="$1" out="$2" default_port="$3"
+  [ -f "${list_file}" ] || die "找不到 ${list_file}"
   {
     echo "["
     local first=1
@@ -87,13 +90,13 @@ gen_targets() {
       # 补默认端口
       case "${line}" in
         *:*) : ;;
-        *)   line="${line}:16080" ;;
+        *)   line="${line}:${default_port}" ;;
       esac
       [ "${first}" = "0" ] && echo ","
       first=0
       printf '  {"targets":["%s"],"labels":{"node":"%s"}}' \
         "${line}" "$(echo "${line}" | cut -d: -f1)"
-    done < "${NODES_FILE}"
+    done < "${list_file}"
     echo
     echo "]"
   } > "${out}"
@@ -126,7 +129,8 @@ deploy_center() {
   log "数据目录就绪：${DATA_DIR}"
 
   # 3) 生成采集目标（file_sd）
-  gen_targets "${CENTER_DIR}/prometheus/targets/hcu-nodes.json"
+  gen_targets "${NODES_FILE}" "${CENTER_DIR}/prometheus/targets/hcu-nodes.json" 16080
+  gen_targets "${SGLANG_FILE}" "${CENTER_DIR}/prometheus/targets/sglang-servers.json" 8000
 
   # 4) 起栈
   cd "${CENTER_DIR}"
@@ -228,9 +232,7 @@ deploy_gpu_node() {
 # =============================================================================
 # 中心节点：重新生成目标 + 热加载
 # =============================================================================
-add_node() {
-  require_docker
-  gen_targets "${CENTER_DIR}/prometheus/targets/hcu-nodes.json"
+reload_prometheus() {
   # file_sd 30s 内自动刷新；这里主动 reload 立即生效
   if docker ps --format '{{.Names}}' | grep -qx "${C_PROM}"; then
     curl -sf -X POST "http://127.0.0.1:9090/-/reload" >/dev/null 2>&1 \
@@ -239,6 +241,23 @@ add_node() {
   else
     warn "Prometheus 容器未运行，目标已写入文件，启动后自动生效"
   fi
+}
+
+add_node() {
+  require_docker
+  gen_targets "${NODES_FILE}" "${CENTER_DIR}/prometheus/targets/hcu-nodes.json" 16080
+  reload_prometheus
+}
+
+# SGLang 推理服务：从 sglang.txt 生成目标 + 热加载
+# 前提：服务启动参数带 --enable-metrics（/metrics 在服务端口上）
+sglang() {
+  require_docker
+  gen_targets "${SGLANG_FILE}" "${CENTER_DIR}/prometheus/targets/sglang-servers.json" 8000
+  reload_prometheus
+  echo
+  echo "提示：若目标 health 不是 up，先确认服务启动参数带 --enable-metrics，"
+  echo "      且中心节点能 curl 通 <接口>/metrics。"
 }
 
 # =============================================================================
@@ -299,6 +318,7 @@ case "${1:-}" in
   center)     deploy_center ;;
   gpu-node)   deploy_gpu_node ;;
   add-node)   add_node ;;
+  sglang)     sglang ;;
   status)     status ;;
   stop)       stop ;;
   pack-images) pack_images ;;
@@ -309,7 +329,8 @@ HCU 可观测体系 —— 一键部署脚本
 用法：
   bash deploy.sh center       在本机部署中心监控栈（Prometheus+Alertmanager+Grafana）
   bash deploy.sh gpu-node     在本机部署 hcu-exporter（GPU 计算节点采集端）
-  bash deploy.sh add-node     中心节点：从 nodes.txt 重新生成采集目标并热加载
+  bash deploy.sh add-node     中心节点：从 nodes.txt 重新生成 HCU 采集目标并热加载
+  bash deploy.sh sglang       中心节点：从 sglang.txt 生成 SGLang 服务采集目标并热加载
   bash deploy.sh status       查看本机容器 / 目标 / 指标状态
   bash deploy.sh stop         停止本机相关容器
   bash deploy.sh pack-images  打包离线镜像 tar 到 images/（在已构建镜像的机器上执行）

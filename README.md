@@ -22,17 +22,19 @@ GPU 计算节点(有 HCU)                中心节点(无 DCU 的虚拟机即可
 ```
 hcu-observability/
 ├── deploy.sh                     # 一键部署脚本（入口）
-├── nodes.txt                     # GPU 节点列表（中心节点采集目标来源）
+├── nodes.txt                     # GPU 节点列表（HCU 采集目标来源）
+├── sglang.txt                    # SGLang 服务接口列表（推理服务采集目标来源）
 ├── images/                       # 离线镜像 tar（.gitignore，随目录拷贝分发）
 └── config/
     ├── center/                   # 中心节点
     │   ├── docker-compose.yml    #   Prometheus + Alertmanager + Grafana
     │   ├── prometheus/
     │   │   ├── prometheus.yml    #   采集配置（file_sd 读 targets/）
-    │   │   ├── rules/hcu-alerts.yml   # 11 条告警规则
-    │   │   └── targets/          #   由 deploy.sh 从 nodes.txt 生成
+    │   │   ├── rules/hcu-alerts.yml   # 11 条 HCU 告警规则
+    │   │   ├── rules/sglang-alerts.yml # 8 条 SGLang 告警规则
+    │   │   └── targets/          #   由 deploy.sh 从 nodes.txt / sglang.txt 生成
     │   ├── alertmanager/alertmanager.yml
-    │   └── grafana/              #   数据源 + 3 个 dashboard 自动发现
+    │   └── grafana/              #   数据源 + 4 个 dashboard 自动发现（含 SGLang）
     └── gpu-node/
         └── gpu-node.env          # exporter 运行参数（含 24 精选指标）
 ```
@@ -85,13 +87,52 @@ bash deploy.sh add-node
 
 打开 Grafana，`HCU Exporter` dashboard 已自动导入，按 `node` 标签过滤各节点。
 
+## SGLang 推理服务监控
+
+监控 SGLang 推理服务（吞吐 / 延迟 / KV cache / 排队 / 投机解码等），方式与 GPU 节点相同：**填接口列表 → 生成 file_sd 目标 → 热加载**。
+
+### 前提：服务开启 metrics
+
+SGLang 启动参数加 `--enable-metrics`，`/metrics` 就暴露在**服务端口**上（如 `:8000/metrics`）。
+验证：`curl http://<服务IP>:8000/metrics | grep sglang:`
+
+### 接入步骤
+
+```bash
+# 1) 中心节点：编辑 sglang.txt，每行一个 <服务IP>:<端口>
+# 2) 中心节点：
+bash deploy.sh sglang
+# 3) Grafana 打开 "SGLang Inference Monitor" dashboard（自动导入）
+```
+
+### 面板内容（15 个）
+
+- **概览**：服务状态 / 运行中请求 / 排队请求 / KV cache 使用率 / 吞吐 / 缓存命中率
+- **延迟**：TTFT P50/P90/P99、端到端延迟 P50/P90/P99、排队等待 P99
+- **负载**：运行/排队请求数、KV cache tokens、prompt/generation token 速率
+- **质量**：ITL P99、投机解码接受率（EAGLE）、中止/重退请求
+
+### 告警规则（6 条，`config/center/prometheus/rules/sglang-alerts.yml`）
+
+| 规则 | 级别 | 条件 |
+|------|------|------|
+| SGLangDown | critical | 服务离线 1m |
+| SGLangQueueBacklog | warning | 排队 >32 持续 5m |
+| SGLangRunningReqsHigh | warning | 运行中 >128 持续 5m |
+| SGLangKVCacheHigh | warning | token_usage >0.9 持续 5m |
+| SGLangTTFTHigh | warning | TTFT P99 >3s 持续 10m |
+| SGLangE2ELatencyHigh | warning | E2E P99 >60s 持续 10m |
+| SGLangAbortedRequests | warning | 5m 内有请求被中止 |
+| SGLangSpecAcceptRateLow | warning | 投机接受率 <0.3 持续 30m |
+
 ## 常用命令
 
 | 命令 | 作用 |
 |------|------|
 | `bash deploy.sh center` | 部署中心监控栈 |
 | `bash deploy.sh gpu-node` | 部署 GPU 节点采集端 |
-| `bash deploy.sh add-node` | 中心节点：重新生成目标 + 热加载 |
+| `bash deploy.sh add-node` | 中心节点：从 nodes.txt 重新生成 HCU 目标 + 热加载 |
+| `bash deploy.sh sglang` | 中心节点：从 sglang.txt 生成 SGLang 目标 + 热加载 |
 | `bash deploy.sh status` | 查看本机容器 / 目标 / 指标状态 |
 | `bash deploy.sh stop` | 停止本机相关容器 |
 | `bash deploy.sh pack-images` | 打包离线镜像 tar 到 `images/` |
