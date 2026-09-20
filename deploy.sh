@@ -10,15 +10,15 @@
 # 用法：
 #   bash deploy.sh center      # 在本机部署中心监控栈
 #   bash deploy.sh gpu-node    # 在本机部署 hcu-exporter（GPU 节点）
-#   bash deploy.sh add-node    # 中心节点：从 nodes.txt 重新生成 HCU 采集目标并热加载
-#   bash deploy.sh sglang      # 中心节点：从 sglang.txt 生成 SGLang 服务采集目标并热加载
+#   bash deploy.sh add-node    # 中心节点：从 nodes.yml 重新生成 HCU 采集目标并热加载
+#   bash deploy.sh sglang      # 中心节点：从 sglang.yml 生成 SGLang 服务采集目标并热加载
 #   bash deploy.sh status      # 查看本机部署状态
 #   bash deploy.sh stop        # 停止本机相关容器
 #
 # 典型流程（跨机）：
 #   1) 把整个仓库拷到中心节点，bash deploy.sh center
 #   2) 把整个仓库拷到每台 GPU 节点，bash deploy.sh gpu-node
-#   3) 在中心节点编辑 nodes.txt 填各 GPU 节点 IP，bash deploy.sh add-node
+#   3) 在中心节点编辑 nodes.yml 填各 GPU 节点 IP，bash deploy.sh add-node
 #   4) 打开 http://<中心IP>:3000 看 Grafana
 #
 # 镜像分发（离线）：
@@ -32,8 +32,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CENTER_DIR="${SCRIPT_DIR}/config/center"
 GPU_DIR="${SCRIPT_DIR}/config/gpu-node"
 IMAGES_DIR="${SCRIPT_DIR}/images"
-NODES_FILE="${SCRIPT_DIR}/nodes.txt"
-SGLANG_FILE="${SCRIPT_DIR}/sglang.txt"
+NODES_FILE="${SCRIPT_DIR}/nodes.yml"
+SGLANG_FILE="${SCRIPT_DIR}/sglang.yml"
 DATA_DIR="${CENTER_DIR}/data"
 
 # 镜像名（与 images/ 里 tar 的 tag 对应）
@@ -74,8 +74,12 @@ ensure_image() {
     || die "镜像 ${img} 不可用：images/ 下没有对应 tar，且本地未构建。请先在构建机上执行 bash deploy.sh pack-images"
 }
 
-# 从接口列表文件生成 Prometheus file_sd 目标文件
+# 从 YAML 列表文件生成 Prometheus file_sd 目标文件
 #   gen_targets <列表文件> <输出json> <默认端口>
+# 列表文件格式（targets: 下的简单字符串列表，纯 bash 解析，无需 PyYAML）：
+#   targets:
+#     - "10.0.0.11:16080"
+#     - "10.0.0.12"          # 端口可省略，用默认端口
 gen_targets() {
   local list_file="$1" out="$2" default_port="$3"
   [ -f "${list_file}" ] || die "找不到 ${list_file}"
@@ -83,9 +87,22 @@ gen_targets() {
     echo "["
     local first=1
     while IFS= read -r line; do
-      # 去掉行内注释与首尾空白
-      line="${line%%#*}"
-      line="$(echo "${line}" | xargs || true)"
+      # 只取列表项：行内以 - 开头（允许前导空白）
+      case "${line}" in
+        *#*) line="${line%%#*}" ;;   # 去行内注释
+      esac
+      # 去掉前导空白
+      line="$(echo "${line}" | sed 's/^[[:space:]]*//')"
+      case "${line}" in
+        -\ *) : ;;                    # 是列表项
+        -)   : ;;                     # 裸 -（空项，跳过）
+        *)   continue ;;              # 非列表项（targets: 行、空行等）
+      esac
+      # 去掉 "- " 前缀与首尾空白、引号
+      line="${line#-}"
+      line="$(echo "${line}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+      line="${line%\"}"; line="${line#\"}"
+      line="${line%\'}"; line="${line#\'}"
       [ -z "${line}" ] && continue
       # 补默认端口
       case "${line}" in
@@ -160,7 +177,7 @@ deploy_center() {
   echo
   echo "  下一步："
   echo "    1) 在每台 GPU 节点执行: bash deploy.sh gpu-node"
-  echo "    2) 编辑 nodes.txt 填各 GPU 节点 IP"
+  echo "    2) 编辑 nodes.yml 填各 GPU 节点 IP"
   echo "    3) 执行: bash deploy.sh add-node"
   echo "============================================================"
 }
@@ -225,7 +242,7 @@ deploy_gpu_node() {
   echo "  本机采集端: http://${ip:-<本机IP>}:${PORT}/metrics"
   echo
   echo "  下一步（在中心节点）："
-  echo "    把 ${ip:-<本机IP>}:${PORT} 加进 nodes.txt，然后 bash deploy.sh add-node"
+  echo "    把 ${ip:-<本机IP>}:${PORT} 加进 nodes.yml，然后 bash deploy.sh add-node"
   echo "============================================================"
 }
 
@@ -249,7 +266,7 @@ add_node() {
   reload_prometheus
 }
 
-# SGLang 推理服务：从 sglang.txt 生成目标 + 热加载
+# SGLang 推理服务：从 sglang.yml 生成目标 + 热加载
 # 前提：服务启动参数带 --enable-metrics（/metrics 在服务端口上）
 sglang() {
   require_docker
@@ -329,8 +346,8 @@ HCU 可观测体系 —— 一键部署脚本
 用法：
   bash deploy.sh center       在本机部署中心监控栈（Prometheus+Alertmanager+Grafana）
   bash deploy.sh gpu-node     在本机部署 hcu-exporter（GPU 计算节点采集端）
-  bash deploy.sh add-node     中心节点：从 nodes.txt 重新生成 HCU 采集目标并热加载
-  bash deploy.sh sglang       中心节点：从 sglang.txt 生成 SGLang 服务采集目标并热加载
+  bash deploy.sh add-node     中心节点：从 nodes.yml 重新生成 HCU 采集目标并热加载
+  bash deploy.sh sglang       中心节点：从 sglang.yml 生成 SGLang 服务采集目标并热加载
   bash deploy.sh status       查看本机容器 / 目标 / 指标状态
   bash deploy.sh stop         停止本机相关容器
   bash deploy.sh pack-images  打包离线镜像 tar 到 images/（在已构建镜像的机器上执行）
@@ -338,7 +355,7 @@ HCU 可观测体系 —— 一键部署脚本
 典型流程（跨机）：
   1) 中心节点:  bash deploy.sh center
   2) 各 GPU 节点: bash deploy.sh gpu-node
-  3) 中心节点:  编辑 nodes.txt 填各 GPU 节点 IP，再 bash deploy.sh add-node
+  3) 中心节点:  编辑 nodes.yml 填各 GPU 节点 IP，再 bash deploy.sh add-node
   4) 打开 http://<中心IP>:3000 看 Grafana
 USAGE
     exit 1

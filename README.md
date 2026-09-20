@@ -13,7 +13,7 @@ GPU 计算节点(有 HCU)                中心节点(无 DCU 的虚拟机即可
                                     └──────────────────────────────────┘
 ```
 
-- **中心节点**：跑 Prometheus + Alertmanager + Grafana，按 `nodes.txt` 里的 IP 拉取各 GPU 节点指标。
+- **中心节点**：跑 Prometheus + Alertmanager + Grafana，按 `nodes.yml` 里的 IP 拉取各 GPU 节点指标。
 - **GPU 计算节点**：跑 `hcu-exporter` 容器，暴露本机 HCU 指标到 `:16080`。
 - **离线优先**：镜像 tar 随仓库分发（`images/`），新机器无需外网/代理即可部署。
 
@@ -22,8 +22,8 @@ GPU 计算节点(有 HCU)                中心节点(无 DCU 的虚拟机即可
 ```
 hcu-observability/
 ├── deploy.sh                     # 一键部署脚本（入口）
-├── nodes.txt                     # GPU 节点列表（HCU 采集目标来源）
-├── sglang.txt                    # SGLang 服务接口列表（推理服务采集目标来源）
+├── nodes.yml                     # GPU 节点列表（HCU 采集目标来源）
+├── sglang.yml                    # SGLang 服务接口列表（推理服务采集目标来源）
 ├── images/                       # 离线镜像 tar（.gitignore，随目录拷贝分发）
 └── config/
     ├── center/                   # 中心节点
@@ -32,7 +32,7 @@ hcu-observability/
     │   │   ├── prometheus.yml    #   采集配置（file_sd 读 targets/）
     │   │   ├── rules/hcu-alerts.yml   # 11 条 HCU 告警规则
     │   │   ├── rules/sglang-alerts.yml # 8 条 SGLang 告警规则
-    │   │   └── targets/          #   由 deploy.sh 从 nodes.txt / sglang.txt 生成
+    │   │   └── targets/          #   由 deploy.sh 从 nodes.yml / sglang.yml 生成
     │   ├── alertmanager/alertmanager.yml
     │   └── grafana/              #   数据源 + 4 个 dashboard 自动发现（含 SGLang）
     └── gpu-node/
@@ -57,7 +57,7 @@ bash deploy.sh pack-images
 bash deploy.sh center
 ```
 
-自动完成：加载镜像 → 建数据目录并修属主 → 从 `nodes.txt` 生成采集目标 → 起栈 → 验证。
+自动完成：加载镜像 → 建数据目录并修属主 → 从 `nodes.yml` 生成采集目标 → 起栈 → 验证。
 
 访问：
 - Grafana `http://<中心IP>:3000`（admin / admin，**生产请改密码**）
@@ -76,7 +76,7 @@ bash deploy.sh gpu-node
 ### 3. 把 GPU 节点接入中心
 
 ```bash
-# 在中心节点：编辑 nodes.txt，每行一个 <GPU节点IP>:16080
+# 在中心节点：编辑 nodes.yml，每行一个 <GPU节点IP>:16080
 # 然后：
 bash deploy.sh add-node
 ```
@@ -99,7 +99,7 @@ SGLang 启动参数加 `--enable-metrics`，`/metrics` 就暴露在**服务端�
 ### 接入步骤
 
 ```bash
-# 1) 中心节点：编辑 sglang.txt，每行一个 <服务IP>:<端口>
+# 1) 中心节点：编辑 sglang.yml，每行一个 <服务IP>:<端口>
 # 2) 中心节点：
 bash deploy.sh sglang
 # 3) Grafana 打开 "SGLang Inference Monitor" dashboard（自动导入）
@@ -131,8 +131,8 @@ bash deploy.sh sglang
 |------|------|
 | `bash deploy.sh center` | 部署中心监控栈 |
 | `bash deploy.sh gpu-node` | 部署 GPU 节点采集端 |
-| `bash deploy.sh add-node` | 中心节点：从 nodes.txt 重新生成 HCU 目标 + 热加载 |
-| `bash deploy.sh sglang` | 中心节点：从 sglang.txt 生成 SGLang 目标 + 热加载 |
+| `bash deploy.sh add-node` | 中心节点：从 nodes.yml 重新生成 HCU 目标 + 热加载 |
+| `bash deploy.sh sglang` | 中心节点：从 sglang.yml 生成 SGLang 目标 + 热加载 |
 | `bash deploy.sh status` | 查看本机容器 / 目标 / 指标状态 |
 | `bash deploy.sh stop` | 停止本机相关容器 |
 | `bash deploy.sh pack-images` | 打包离线镜像 tar 到 `images/` |
@@ -153,9 +153,9 @@ bash deploy.sh sglang
 
 ### 中心节点与 GPU 节点「不通」怎么办
 
-- **同一内网可直连**（本仓库默认场景）：`nodes.txt` 写各 GPU 节点内网 IP，Prometheus 直接 scrape。
+- **同一内网可直连**（本仓库默认场景）：`nodes.yml` 写各 GPU 节点内网 IP，Prometheus 直接 scrape。
 - **中心与某 GPU 节点同机**：该行写 `host.docker.internal:16080`（compose 已映射到宿主机网关）。
-- **跨网段/需打通**：先保证中心节点能 `curl <GPU节点IP>:16080/metrics`（防火墙放行 16080），再填 `nodes.txt`。
+- **跨网段/需打通**：先保证中心节点能 `curl <GPU节点IP>:16080/metrics`（防火墙放行 16080），再填 `nodes.yml`。
 
 ### 离线 vs 在线
 
@@ -182,5 +182,5 @@ bash deploy.sh sglang
 
 ## 迁移 / 扩容
 
-- **加 GPU 节点**：新节点 `bash deploy.sh gpu-node` → 中心 `nodes.txt` 加一行 → `bash deploy.sh add-node`。
-- **迁移中心节点**：新中心机 `bash deploy.sh center`（全新开始，不保留旧数据）；各 GPU 节点无需改动，只需确认 `nodes.txt` 指向新中心（GPU 节点是被动被 scrape，不感知中心位置）。
+- **加 GPU 节点**：新节点 `bash deploy.sh gpu-node` → 中心 `nodes.yml` 加一行 → `bash deploy.sh add-node`。
+- **迁移中心节点**：新中心机 `bash deploy.sh center`（全新开始，不保留旧数据）；各 GPU 节点无需改动，只需确认 `nodes.yml` 指向新中心（GPU 节点是被动被 scrape，不感知中心位置）。
