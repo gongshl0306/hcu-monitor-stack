@@ -1,6 +1,6 @@
 # SGLang 推理服务告警规则
 #
-# 指标前提：服务启动带 --enable-metrics（sglang: 前缀指标）。
+# 指标前提：服务启动带 --enable-metrics（sglang_ 前缀指标）。
 # 标签：instance（IP:端口）、model_name（--served-model-name）。
 
 groups:
@@ -20,7 +20,7 @@ groups:
     rules:
       # 请求排队积压
       - alert: SGLangQueueBacklog
-        expr: sglang:num_queue_reqs > 32
+        expr: sglang_num_queue_reqs > 32
         for: 5m
         labels:
           severity: warning
@@ -30,7 +30,7 @@ groups:
 
       # 运行中请求过多（接近/超过并发能力）
       - alert: SGLangRunningReqsHigh
-        expr: sglang:num_running_reqs > 128
+        expr: sglang_num_running_reqs > 128
         for: 5m
         labels:
           severity: warning
@@ -40,7 +40,7 @@ groups:
 
       # KV cache 使用率过高（>90% 会触发 retract/抢占）
       - alert: SGLangKVCacheHigh
-        expr: sglang:token_usage > 0.9
+        expr: sglang_token_usage > 0.9
         for: 5m
         labels:
           severity: warning
@@ -52,7 +52,7 @@ groups:
     rules:
       # TTFT（首 token 延迟）P99 过高
       - alert: SGLangTTFTHigh
-        expr: histogram_quantile(0.99, sum(rate(sglang:time_to_first_token_seconds_bucket[5m])) by (le, instance)) > 3
+        expr: histogram_quantile(0.99, sum(rate(sglang_time_to_first_token_seconds_bucket[5m])) by (le, instance)) > 3
         for: 10m
         labels:
           severity: warning
@@ -62,7 +62,7 @@ groups:
 
       # 端到端延迟 P99 过高
       - alert: SGLangE2ELatencyHigh
-        expr: histogram_quantile(0.99, sum(rate(sglang:e2e_request_latency_seconds_bucket[5m])) by (le, instance)) > 60
+        expr: histogram_quantile(0.99, sum(rate(sglang_e2e_request_latency_seconds_bucket[5m])) by (le, instance)) > 60
         for: 10m
         labels:
           severity: warning
@@ -74,7 +74,7 @@ groups:
     rules:
       # 有请求被中止
       - alert: SGLangAbortedRequests
-        expr: increase(sglang:num_aborted_requests_total[5m]) > 0
+        expr: increase(sglang_num_aborted_requests_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
@@ -84,7 +84,7 @@ groups:
 
       # 投机解码接受率过低（EAGLE 配置异常时会出现）
       - alert: SGLangSpecAcceptRateLow
-        expr: sglang:spec_accept_rate < 0.3 and sglang:spec_accept_rate > 0
+        expr: sglang_spec_accept_rate < 0.3 and sglang_spec_accept_rate > 0
         for: 30m
         labels:
           severity: warning

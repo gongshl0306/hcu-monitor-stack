@@ -54,7 +54,7 @@
         "name": "model",
         "label": "model:",
         "query": {
-          "query": "label_values(sglang:num_running_reqs, model_name)",
+          "query": "label_values(sglang_num_running_reqs, model_name)",
           "refId": "PrometheusVariableQueryEditor-model"
         },
         "datasource": {
@@ -132,7 +132,7 @@
       },
       "targets": [
         {
-          "expr": "sum(sglang:num_running_reqs{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_num_running_reqs{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "{{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -172,7 +172,7 @@
       },
       "targets": [
         {
-          "expr": "sum(sglang:num_queue_reqs{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_num_queue_reqs{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "{{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -212,7 +212,7 @@
       },
       "targets": [
         {
-          "expr": "avg(sglang:token_usage{instance=~\"$instance\"}) by (instance)",
+          "expr": "avg(sglang_token_usage{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "{{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -268,7 +268,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(sglang:generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "expr": "sum(rate(sglang_generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
           "legendFormat": "{{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -310,7 +310,7 @@
       },
       "targets": [
         {
-          "expr": "avg(sglang:cache_hit_rate{instance=~\"$instance\"}) by (instance)",
+          "expr": "avg(sglang_cache_hit_rate{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "{{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -352,7 +352,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5,  sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.5,  sum(rate(sglang_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P50 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -361,7 +361,7 @@
           }
         },
         {
-          "expr": "histogram_quantile(0.9,  sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.9,  sum(rate(sglang_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P90 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -370,7 +370,7 @@
           }
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(sglang:time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.99, sum(rate(sglang_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -404,7 +404,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5,  sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.5,  sum(rate(sglang_e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P50 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -413,7 +413,7 @@
           }
         },
         {
-          "expr": "histogram_quantile(0.9,  sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.9,  sum(rate(sglang_e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P90 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -422,7 +422,7 @@
           }
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(sglang:e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.99, sum(rate(sglang_e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -456,7 +456,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(sglang:queue_time_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.99, sum(rate(sglang_queue_time_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -490,7 +490,7 @@
       },
       "targets": [
         {
-          "expr": "sum(sglang:num_running_reqs{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_num_running_reqs{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "running ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -499,7 +499,7 @@
           }
         },
         {
-          "expr": "sum(sglang:num_queue_reqs{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_num_queue_reqs{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "queue ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -531,7 +531,7 @@
       },
       "targets": [
         {
-          "expr": "sum(sglang:kv_used_tokens{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_kv_used_tokens{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "used ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -540,7 +540,7 @@
           }
         },
         {
-          "expr": "sum(sglang:kv_available_tokens{instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(sglang_kv_available_tokens{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "available ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -572,7 +572,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(sglang:prompt_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "expr": "sum(rate(sglang_prompt_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
           "legendFormat": "prompt ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -581,7 +581,7 @@
           }
         },
         {
-          "expr": "sum(rate(sglang:generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
+          "expr": "sum(rate(sglang_generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
           "legendFormat": "generation ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -615,7 +615,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(sglang:inter_token_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.99, sum(rate(sglang_inter_token_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -649,7 +649,7 @@
       },
       "targets": [
         {
-          "expr": "avg(sglang:spec_accept_rate{instance=~\"$instance\"}) by (instance)",
+          "expr": "avg(sglang_spec_accept_rate{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "accept_rate ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -658,7 +658,7 @@
           }
         },
         {
-          "expr": "avg(sglang:spec_accept_length{instance=~\"$instance\"}) by (instance)",
+          "expr": "avg(sglang_spec_accept_length{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "accept_length ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -692,7 +692,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(sglang:num_aborted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(increase(sglang_num_aborted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
           "legendFormat": "aborted ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
@@ -701,7 +701,7 @@
           }
         },
         {
-          "expr": "sum(increase(sglang:num_retracted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
+          "expr": "sum(increase(sglang_num_retracted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
           "legendFormat": "retracted ${{{{instance}}}}",
           "refId": "A",
           "datasource": {
