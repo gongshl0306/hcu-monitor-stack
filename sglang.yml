@@ -1,14 +1,31 @@
 # SGLang 推理服务接口列表 —— Prometheus 采集目标
 #
-# 格式：targets 下每行一个 <IP>:<端口>
-#   - 端口为 SGLang 服务端口（/metrics 就在这个端口上）
-#   - 前提：服务启动参数带 --enable-metrics
+# 格式：targets 下每行一个服务
+#   - 前提：服务启动参数带 --enable-metrics（/metrics 在服务端口上）
 #   - 跨机：写服务所在机器的内网 IP
 #   - 与中心节点同机：写 127.0.0.1 或 host.docker.internal
 #
-# 改完本文件后，在中心节点执行：bash deploy.sh sglang  （重新生成目标并热加载）
+# 两种写法可混用：
+#   - "10.0.0.11:8000"                    # 简单形式（图例显示 IP:端口）
+#   - target: "10.0.0.12:8000"            # 命名形式（图例显示 server，推荐）
+#     server: "gpu-server01-1"
 #
-# 示例（按你的实际服务地址修改）：
+# 改完本文件后，在中心节点执行：bash deploy.sh sglang  （重新生成目标并热加载）
+
 targets:
-  - "10.0.0.22:8000"
-  - "10.0.0.22:8001"
+  - target: "10.0.0.21:8000"
+    server: "gpu-server01-1"
+  - target: "10.0.0.21:8001"
+    server: "gpu-server01-2"
+  - target: "10.0.0.22:8000"
+    server: "gpu-server02-1"
+  - target: "10.0.0.22:8001"
+    server: "gpu-server02-2"
+  - target: "10.0.0.23:8000"
+    server: "gpu-server03-1"
+  - target: "10.0.0.23:8001"
+    server: "gpu-server03-2"
+  - target: "10.0.0.23:8002"
+    server: "gpu-server03-3"
+  - target: "10.0.0.23:8003"
+    server: "gpu-server03-4"

@@ -76,44 +76,74 @@ ensure_image() {
 
 # 从 YAML 列表文件生成 Prometheus file_sd 目标文件
 #   gen_targets <列表文件> <输出json> <默认端口>
-# 列表文件格式（targets: 下的简单字符串列表，纯 bash 解析，无需 PyYAML）：
+# 列表文件格式（targets: 下，纯 bash 解析，无需 PyYAML），两种写法可混用：
 #   targets:
-#     - "10.0.0.11:16080"
-#     - "10.0.0.12"          # 端口可省略，用默认端口
+#     - "10.0.0.11:16080"            # 简单形式：只有 node 标签
+#     - "10.0.0.12"                  # 端口可省略，用默认端口
+#     - target: "10.0.0.13:8000"     # 命名形式：额外加 server 标签（Grafana 图例用）
+#       server: "gpu-server01-1"
 gen_targets() {
   local list_file="$1" out="$2" default_port="$3"
   [ -f "${list_file}" ] || die "找不到 ${list_file}"
   {
     echo "["
     local first=1
+    local pending_target="" pending_name=""
+    # 输出一个已收集的目标
+    flush_target() {
+      [ -z "${pending_target}" ] && return
+      local t="${pending_target}" n="${pending_name}" node
+      case "${t}" in *:*) : ;; *) t="${t}:${default_port}" ;; esac
+      node="$(echo "${t}" | cut -d: -f1)"
+      [ "${first}" = "0" ] && echo ","
+      first=0
+      if [ -n "${n}" ]; then
+        printf '  {"targets":["%s"],"labels":{"node":"%s","server":"%s"}}' "${t}" "${node}" "${n}"
+      else
+        printf '  {"targets":["%s"],"labels":{"node":"%s"}}' "${t}" "${node}"
+      fi
+      pending_target=""; pending_name=""
+    }
     while IFS= read -r line; do
-      # 只取列表项：行内以 - 开头（允许前导空白）
+      case "${line}" in *#*) line="${line%%#*}" ;; esac   # 去行内注释
+      line="$(echo "${line}" | sed 's/^[[:space:]]*//')"  # 去前导空白
+      # server: 行 —— 属于上一个 target
       case "${line}" in
-        *#*) line="${line%%#*}" ;;   # 去行内注释
+        server:*)
+          local v="${line#server:}"
+          v="$(echo "${v}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+          v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+          [ -n "${pending_target}" ] && pending_name="${v}"
+          continue
+          ;;
       esac
-      # 去掉前导空白
-      line="$(echo "${line}" | sed 's/^[[:space:]]*//')"
+      # 只处理列表项
       case "${line}" in
-        -\ *) : ;;                    # 是列表项
-        -)   : ;;                     # 裸 -（空项，跳过）
-        *)   continue ;;              # 非列表项（targets: 行、空行等）
+        -\ *) : ;;
+        -)   : ;;
+        *)   continue ;;
       esac
-      # 去掉 "- " 前缀与首尾空白、引号
       line="${line#-}"
       line="$(echo "${line}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
       line="${line%\"}"; line="${line#\"}"
       line="${line%\'}"; line="${line#\'}"
       [ -z "${line}" ] && continue
-      # 补默认端口
+      # target: "IP:PORT" 命名形式
       case "${line}" in
-        *:*) : ;;
-        *)   line="${line}:${default_port}" ;;
+        target:*)
+          flush_target
+          local v="${line#target:}"
+          v="$(echo "${v}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+          v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+          pending_target="${v}"
+          continue
+          ;;
       esac
-      [ "${first}" = "0" ] && echo ","
-      first=0
-      printf '  {"targets":["%s"],"labels":{"node":"%s"}}' \
-        "${line}" "$(echo "${line}" | cut -d: -f1)"
+      # 简单字符串形式
+      flush_target
+      pending_target="${line}"
     done < "${list_file}"
+    flush_target
     echo
     echo "]"
   } > "${out}"
