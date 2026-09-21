@@ -14,7 +14,7 @@
     "to": "now"
   },
   "schemaVersion": 38,
-  "version": 1,
+  "version": 4,
   "weekStart": "",
   "fiscalYearStartMonth": 0,
   "liveNow": false,
@@ -363,7 +363,7 @@
         {
           "expr": "histogram_quantile(0.9,  sum(rate(sglang_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P90 ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -372,7 +372,7 @@
         {
           "expr": "histogram_quantile(0.99, sum(rate(sglang_time_to_first_token_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "C",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -415,7 +415,7 @@
         {
           "expr": "histogram_quantile(0.9,  sum(rate(sglang_e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P90 ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -424,7 +424,7 @@
         {
           "expr": "histogram_quantile(0.99, sum(rate(sglang_e2e_request_latency_seconds_bucket{instance=~\"$instance\"}[5m])) by (le, instance))",
           "legendFormat": "P99 ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "C",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -501,7 +501,7 @@
         {
           "expr": "sum(sglang_num_queue_reqs{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "queue ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -542,7 +542,7 @@
         {
           "expr": "sum(sglang_kv_available_tokens{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "available ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -583,7 +583,7 @@
         {
           "expr": "sum(rate(sglang_generation_tokens_total{instance=~\"$instance\"}[1m])) by (instance)",
           "legendFormat": "generation ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
@@ -660,7 +660,7 @@
         {
           "expr": "avg(sglang_spec_accept_length{instance=~\"$instance\"}) by (instance)",
           "legendFormat": "accept_length ${{{{instance}}}}",
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"
