@@ -678,7 +678,7 @@
     },
     {
       "id": 15,
-      "title": "中止/重退请求 (5m增量)",
+      "title": "重退/暂停请求数",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -692,8 +692,8 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(sglang_num_aborted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
-          "legendFormat": "aborted ${{{{instance}}}}",
+          "expr": "sum(sglang_num_retracted_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "retracted {{instance}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -701,9 +701,9 @@
           }
         },
         {
-          "expr": "sum(increase(sglang_num_retracted_requests_total{instance=~\"$instance\"}[5m])) by (instance)",
-          "legendFormat": "retracted ${{{{instance}}}}",
-          "refId": "A",
+          "expr": "sum(sglang_num_paused_reqs{instance=~\"$instance\"}) by (instance)",
+          "legendFormat": "paused {{instance}}",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "hcu-prometheus"

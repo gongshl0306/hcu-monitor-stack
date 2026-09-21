@@ -72,15 +72,15 @@ groups:
 
   - name: sglang-errors
     rules:
-      # 有请求被中止
-      - alert: SGLangAbortedRequests
-        expr: increase(sglang_num_aborted_requests_total[5m]) > 0
+      # 有请求被重退（KV cache 不足触发 retract，会重算 prefill，影响吞吐）
+      - alert: SGLangRetractedRequests
+        expr: sglang_num_retracted_reqs > 0
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "SGLang 有请求被中止: {{ $labels.instance }}"
-          description: "{{ $labels.instance }} 5 分钟内中止 {{ $value | printf \"%.0f\" }} 个请求（客户端断开或服务端中止）。"
+          summary: "SGLang 有请求被重退: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} 当前 {{ $value | printf \"%.0f\" }} 个请求处于重退状态（KV cache 不足触发），持续 5 分钟，建议扩容或限流。"
 
       # 投机解码接受率过低（EAGLE 配置异常时会出现）
       - alert: SGLangSpecAcceptRateLow

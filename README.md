@@ -96,6 +96,10 @@ bash deploy.sh add-node
 SGLang 启动参数加 `--enable-metrics`，`/metrics` 就暴露在**服务端口**上（如 `:8000/metrics`）。
 验证：`curl http://<服务IP>:8000/metrics | grep sglang:`
 
+> **指标名注意**：SGLang 端点输出 `sglang:xxx`（冒号），但 Prometheus 入库时把冒号
+> 清洗成下划线，所以 PromQL / dashboard / 告警里一律写 `sglang_xxx`。
+> 只有 curl 原始端点时才是冒号。
+
 ### 接入步骤
 
 ```bash
@@ -110,7 +114,7 @@ bash deploy.sh sglang
 - **概览**：服务状态 / 运行中请求 / 排队请求 / KV cache 使用率 / 吞吐 / 缓存命中率
 - **延迟**：TTFT P50/P90/P99、端到端延迟 P50/P90/P99、排队等待 P99
 - **负载**：运行/排队请求数、KV cache tokens、prompt/generation token 速率
-- **质量**：ITL P99、投机解码接受率（EAGLE）、中止/重退请求
+- **质量**：ITL P99、投机解码接受率（EAGLE）、重退/暂停请求数
 
 ### 告警规则（6 条，`config/center/prometheus/rules/sglang-alerts.yml`）
 
@@ -122,7 +126,7 @@ bash deploy.sh sglang
 | SGLangKVCacheHigh | warning | token_usage >0.9 持续 5m |
 | SGLangTTFTHigh | warning | TTFT P99 >3s 持续 10m |
 | SGLangE2ELatencyHigh | warning | E2E P99 >60s 持续 10m |
-| SGLangAbortedRequests | warning | 5m 内有请求被中止 |
+| SGLangRetractedRequests | warning | 有请求被重退（KV 不足）持续 5m |
 | SGLangSpecAcceptRateLow | warning | 投机接受率 <0.3 持续 30m |
 
 ## 常用命令
