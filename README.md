@@ -1,6 +1,8 @@
-# hcu-observability
+# hcu-monitor-stack
 
-海光 DCU/HCU 监控体系 —— **一个仓库，两种角色，离线优先**，用于统一部署与分发。
+**hcu-monitor-stack** 是一套面向 HCU（海光 DCU）GPU 集群的开箱即用可观测体系 —— **一个仓库，两种角色，离线优先**，用于统一部署与分发。
+
+> Out-of-the-box observability stack for HCU (Hygon DCU) GPU clusters — hcu-exporter + Prometheus + Grafana + Alertmanager, with built-in SGLang inference monitoring. YAML-driven targets, one-script offline deployment.
 
 > **新集群从零部署 / 交接给其他 agent**：看 [`INSTALL.md`](INSTALL.md)
 > （传输清单、前置条件、分步部署、10 个已知坑、验收标准）。
@@ -23,7 +25,7 @@ GPU 计算节点(有 HCU)                中心节点(无 DCU 的虚拟机即可
 ## 目录结构
 
 ```
-hcu-observability/
+hcu-monitor-stack/
 ├── deploy.sh                     # 一键部署脚本（入口）
 ├── nodes.yml                     # GPU 节点列表（HCU 采集目标来源）
 ├── sglang.yml                    # SGLang 服务接口列表（推理服务采集目标来源）
@@ -191,3 +193,14 @@ bash deploy.sh sglang
 
 - **加 GPU 节点**：新节点 `bash deploy.sh gpu-node` → 中心 `nodes.yml` 加一行 → `bash deploy.sh add-node`。
 - **迁移中心节点**：新中心机 `bash deploy.sh center`（全新开始，不保留旧数据）；各 GPU 节点无需改动，只需确认 `nodes.yml` 指向新中心（GPU 节点是被动被 scrape，不感知中心位置）。
+
+## License
+
+本项目基于 [MIT License](LICENSE) 开源。
+
+```
+Copyright (c) 2026 gongshl
+```
+
+> 相关组件各自遵循其上游许可证：Prometheus（Apache-2.0）、Alertmanager（Apache-2.0）、
+> Grafana（AGPL-3.0）、SGLang（Apache-2.0）。本项目仅包含部署配置与采集目标管理脚本。

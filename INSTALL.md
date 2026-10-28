@@ -27,10 +27,10 @@ GPU 计算节点(有 HCU)                        中心节点(无 HCU 的 VM 即
 
 | # | 内容 | 源路径 | 大小 | 必需 | 说明 |
 |---|------|--------|------|------|------|
-| 1 | 仓库本体（含 images/） | `hcu-observability-<日期>.tar.gz` | ~353M | ✅ | 一个包全包含：deploy.sh、config/、nodes.yml、sglang.yml、images/ 4 个镜像 tar、.git |
+| 1 | 仓库本体（含 images/） | `hcu-monitor-stack-<日期>.tar.gz` | ~353M | ✅ | 一个包全包含：deploy.sh、config/、nodes.yml、sglang.yml、images/ 4 个镜像 tar、.git |
 | 2 | （可选）单独镜像 tar | `images/*.tar` | 355M | 仅当仓库包没带 images/ 时 | prometheus/alertmanager/grafana/hcu-exporter 各一个 |
 
-**推荐做法**：直接传仓库 tar 包（源环境用 `tar czf hcu-observability-$(date +%Y%m%d).tar.gz hcu-observability` 生成，
+**推荐做法**：直接传仓库 tar 包（源环境用 `tar czf hcu-monitor-stack-$(date +%Y%m%d).tar.gz hcu-monitor-stack` 生成，
 源环境 `/root/maintenance/` 下有现成的）。传输后核对 sha256。
 
 仓库包内**不需要**传输的东西（新集群自己生成/已有）：
@@ -63,8 +63,8 @@ GPU 计算节点(有 HCU)                        中心节点(无 HCU 的 VM 即
 ### 步骤 1：所有节点解压仓库
 
 ```bash
-tar xzf hcu-observability-<日期>.tar.gz -C /root/maintenance/
-cd /root/maintenance/hcu-observability
+tar xzf hcu-monitor-stack-<日期>.tar.gz -C /root/maintenance/
+cd /root/maintenance/hcu-monitor-stack
 ```
 
 ### 步骤 2：部署中心节点
